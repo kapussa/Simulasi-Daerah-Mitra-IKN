@@ -1,444 +1,317 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 from datetime import date
 
 st.set_page_config(
-    page_title="Simulasi Daerah Mitra IKN",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Simulasi Pengkajian Daerah Mitra IKN",
+    layout="wide"
 )
 
-# =====================
-# STYLE
-# =====================
+st.title("🎮 Gaming Simulation: Pengkajian Calon Daerah Mitra IKN")
+st.caption("Simulasi berbasis Perka OIKN Nomor 2 Tahun 2026 dan Kepka OIKN Nomor 77 Tahun 2026")
 
-st.markdown("""
-<style>
-.main {
-    background-color: #0E1117;
-}
-.block-container {
-    padding-top: 2rem;
-}
-.metric-card {
-    background-color: #151A21;
-    padding: 20px;
-    border-radius: 16px;
-    border: 1px solid #2C333A;
-}
-.big-title {
-    font-size: 42px;
-    font-weight: 800;
-}
-.subtle {
-    color: #9CA3AF;
-}
-</style>
-""", unsafe_allow_html=True)
+# =========================
+# DATA DASAR
+# =========================
 
-# =====================
-# DATA MASTER
-# =====================
+PEMRAKARSA = [
+    "Kementerian/Lembaga",
+    "Pemerintah Daerah Provinsi",
+    "Pemerintah Daerah Kabupaten/Kota",
+    "Badan Usaha",
+    "Otorita IKN"
+]
 
-KAWASAN_DB = {
-    "KPI/KI Kariangau": {
-        "lokasi": "Kota Balikpapan, Kalimantan Timur",
-        "luas": 2000,
-        "status": "Telah ditetapkan sebagai kawasan industri",
-        "klaster": ["Teknologi Bersih", "Energi Rendah Karbon", "Kimia Maju"],
-        "investasi": 28.5,
-        "tenaga_kerja": 12000
-    },
-    "KI Buluminung": {
-        "lokasi": "Kabupaten Penajam Paser Utara, Kalimantan Timur",
-        "luas": 4200,
-        "status": "Kawasan industri potensial",
-        "klaster": ["Industri Berbasis Pertanian Berkelanjutan", "Logistik"],
-        "investasi": 18.0,
-        "tenaga_kerja": 8000
-    },
-    "KEK Maloy Batuta Trans Kalimantan": {
-        "lokasi": "Kabupaten Kutai Timur, Kalimantan Timur",
-        "luas": 557,
-        "status": "Kawasan ekonomi khusus",
-        "klaster": ["Industri Berbasis Pertanian Berkelanjutan", "Energi Rendah Karbon"],
-        "investasi": 12.5,
-        "tenaga_kerja": 5000
-    },
-    "KIPI/KIHI Tanah Kuning-Mangkupadi": {
-        "lokasi": "Kabupaten Bulungan, Kalimantan Utara",
-        "luas": 10000,
-        "status": "Kawasan industri hijau",
-        "klaster": ["Energi Rendah Karbon", "Teknologi Bersih", "Kimia Maju"],
-        "investasi": 45.0,
-        "tenaga_kerja": 20000
-    }
-}
+KLASTER_EKONOMI = [
+    "Industri Teknologi Bersih",
+    "Farmasi Terintegrasi",
+    "Industri Berbasis Pertanian Berkelanjutan",
+    "Ekowisata dan Wisata Kebugaran Inklusif",
+    "Industri Kimia Maju dan Turunannya",
+    "Energi Rendah Karbon"
+]
 
-BOBOT = {
-    "Kesesuaian Bidang Usaha dengan Superhub Ekonomi": 10,
-    "Dukungan Pemerintah Daerah": 20,
-    "Potensi Ekonomi dan Kesiapan Infrastruktur": 35,
-    "Rencana Pengembangan Daerah Mitra": 35
-}
+KLASTER_PEMAMPU = [
+    "Pusat Pendidikan Abad ke-21",
+    "Pusat Industri 4.0"
+]
 
-DOKUMEN = [
+DOKUMEN_WAJIB = [
     "Surat pernyataan minat penetapan Daerah Mitra",
-    "Surat pernyataan minat kerja sama",
-    "Peta kartometrik lokasi",
-    "Rencana tata ruang, zonasi, dan masterplan",
-    "Studi kelayakan ekonomi dan finansial",
+    "Surat pernyataan minat kerja sama dengan Kepala OIKN/Pemerintah Daerah",
+    "Peta kartometrik lokasi calon Daerah Mitra",
+    "Rencana tata ruang, pengaturan zonasi, dan/atau masterplan kawasan",
+    "Studi kelayakan ekonomi dan finansial serta potensi ekonomi",
     "Rencana pengelolaan Daerah Mitra",
-    "Rekomendasi dan dukungan Pemerintah Daerah",
+    "Rekomendasi dan komitmen dukungan tertulis dari Pemerintah Daerah",
     "Informasi status lahan yang jelas"
 ]
 
-INTERVENSI = {
-    "Penyusunan studi kelayakan ekonomi dan finansial": 7,
-    "Penyelesaian status lahan": 8,
-    "Sinkronisasi rencana tata ruang dan masterplan": 7,
-    "Peningkatan konektivitas jalan dan logistik": 6,
-    "Penyediaan infrastruktur air, listrik, dan limbah": 6,
-    "Penguatan dukungan Pemerintah Daerah": 5,
-    "Pemberian insentif dan kemudahan berusaha": 4,
-    "Integrasi dengan klaster Superhub Ekonomi Nusantara": 5
+DOKUMEN_OPSIONAL = [
+    "Surat penetapan lokasi sebagai kawasan industri/kawasan khusus/kawasan tertentu lainnya",
+    "Akta pendirian badan usaha"
+]
+
+SUB_INDIKATOR = {
+    "Kesesuaian Bidang Usaha dengan Superhub Ekonomi": 10,
+    "Komitmen Dukungan Anggaran Pemerintah Daerah": 2,
+    "Insentif Pajak, Retribusi, dan Kemudahan": 2,
+    "Status Kepemilikan dan Sengketa Tanah": 1,
+    "Kesesuaian dengan Rencana Tata Ruang Wilayah": 2,
+    "Tercantum dalam Rencana Pembangunan Jangka Menengah Daerah": 2,
+    "Penetapan Lokasi sebagai Kawasan Industri/Khusus/Tertentu": 1,
+    "Ketersediaan Infrastruktur Dasar dan Logistik": 10,
+    "Potensi Sumber Daya Alam dan Sektor Ekonomi": 10,
+    "Potensi Sumber Daya Manusia": 10,
+    "Kondisi Makro Ekonomi Lokal": 5,
+    "Pengalaman Pengelola Kawasan": 5,
+    "Rencana Pengembangan Infrastruktur dan Fasilitas Pendukung": 10,
+    "Rencana Penyerapan Tenaga Kerja": 5,
+    "Rencana Bisnis": 1,
+    "Kelayakan Finansial": 5,
+    "Kelayakan Ekonomi": 5,
+    "Tahapan Pembangunan Daerah Mitra": 1,
+    "Mitigasi Dampak Lingkungan": 2,
+    "Pembiayaan Pengelolaan Daerah Mitra": 1
 }
 
-# =====================
-# SIDEBAR
-# =====================
+# =========================
+# SIDEBAR INPUT
+# =========================
 
-st.sidebar.title("⚙️ Input Simulasi")
+st.sidebar.header("Input Profil Kawasan")
 
-pilihan_kawasan = st.sidebar.selectbox(
-    "Pilih calon Daerah Mitra",
-    list(KAWASAN_DB.keys())
-)
+nama_kawasan = st.sidebar.text_input("Nama calon Daerah Mitra", "KPI/KI Kariangau")
+lokasi = st.sidebar.text_input("Lokasi", "Kota Balikpapan, Kalimantan Timur")
+pemrakarsa = st.sidebar.selectbox("Pemrakarsa", PEMRAKARSA)
 
-data = KAWASAN_DB[pilihan_kawasan]
+luas = st.sidebar.number_input("Luas kawasan atau area usulan (hektare)", min_value=0.0, value=2000.0)
 
-pemrakarsa = st.sidebar.selectbox(
-    "Pemrakarsa",
+jenis_lokasi = st.sidebar.selectbox(
+    "Status lokasi awal",
     [
-        "Kementerian/Lembaga",
-        "Pemerintah Daerah Provinsi",
-        "Pemerintah Daerah Kabupaten/Kota",
-        "Badan Usaha",
-        "Otorita IKN"
+        "Telah ditetapkan sebagai kawasan industri",
+        "Telah ditetapkan sebagai kawasan khusus/strategis",
+        "Kawasan tertentu lainnya",
+        "Lokasi baru"
     ]
 )
 
 st.sidebar.divider()
-st.sidebar.subheader("Checklist Dokumen")
 
-dokumen_terpenuhi = []
-for dok in DOKUMEN:
+st.sidebar.header("Kriteria Dasar Pasal 4")
+
+sesuai_tata_ruang = st.sidebar.checkbox("Sesuai rencana tata ruang wilayah", value=True)
+batas_jelas = st.sidebar.checkbox("Memiliki batas wilayah/area yang jelas dan peta memenuhi kaidah kartografi", value=True)
+status_lahan_jelas = st.sidebar.checkbox("Status lahan jelas", value=True)
+potensi_ekonomi = st.sidebar.checkbox("Memiliki potensi ekonomi mendukung pembangunan IKN", value=True)
+
+klaster_ekonomi = st.sidebar.multiselect(
+    "Klaster ekonomi yang didukung",
+    KLASTER_EKONOMI,
+    default=["Industri Teknologi Bersih", "Energi Rendah Karbon"]
+)
+
+klaster_pemampu = st.sidebar.multiselect(
+    "Klaster pemampu yang didukung",
+    KLASTER_PEMAMPU,
+    default=["Pusat Industri 4.0"]
+)
+
+st.sidebar.divider()
+
+st.sidebar.header("Kelengkapan Dokumen")
+
+dokumen_ada = []
+for dok in DOKUMEN_WAJIB:
     if st.sidebar.checkbox(dok, value=True):
-        dokumen_terpenuhi.append(dok)
+        dokumen_ada.append(dok)
 
-kelengkapan_dokumen = len(dokumen_terpenuhi) / len(DOKUMEN) * 100
+dokumen_opsional_ada = []
+for dok in DOKUMEN_OPSIONAL:
+    if st.sidebar.checkbox(dok, value=False):
+        dokumen_opsional_ada.append(dok)
 
-st.sidebar.divider()
-st.sidebar.subheader("Skor Tim Pengkaji")
+# =========================
+# VERIFIKASI DOKUMEN
+# =========================
 
-skor = {}
-for indikator, bobot in BOBOT.items():
-    skor[indikator] = st.sidebar.slider(
-        f"{indikator} ({bobot}%)",
-        0,
-        100,
-        75
-    )
+dokumen_lengkap = len(dokumen_ada) == len(DOKUMEN_WAJIB)
 
-nilai_awal = sum(skor[i] * BOBOT[i] / 100 for i in BOBOT)
+kriteria_dasar_lengkap = all([
+    sesuai_tata_ruang,
+    batas_jelas,
+    status_lahan_jelas,
+    potensi_ekonomi,
+    len(klaster_ekonomi) > 0,
+    len(klaster_pemampu) > 0
+])
 
-st.sidebar.divider()
-st.sidebar.subheader("Simulasi Intervensi")
+# =========================
+# PENILAIAN BERBOBOT
+# =========================
 
-intervensi_dipilih = st.sidebar.multiselect(
-    "Pilih intervensi kebijakan",
-    list(INTERVENSI.keys())
-)
-
-bonus = sum(INTERVENSI[i] for i in intervensi_dipilih)
-nilai_akhir = min(nilai_awal + bonus, 100)
-
-# =====================
-# STATUS
-# =====================
-
-def status_rekomendasi(nilai, dokumen):
-    if dokumen < 100:
-        return "Layak dengan Perbaikan", "Dokumen belum sepenuhnya lengkap."
-    if nilai >= 80:
-        return "Layak untuk Ditetapkan", "Calon Daerah Mitra dapat direkomendasikan untuk penetapan."
-    if nilai >= 65:
-        return "Layak dengan Perbaikan", "Calon Daerah Mitra memerlukan perbaikan terbatas."
-    return "Belum Layak", "Calon Daerah Mitra memerlukan penguatan substansial."
-
-status_awal, catatan_awal = status_rekomendasi(nilai_awal, kelengkapan_dokumen)
-status_akhir, catatan_akhir = status_rekomendasi(nilai_akhir, kelengkapan_dokumen)
-
-# =====================
-# HEADER
-# =====================
-
-st.markdown('<div class="big-title">🎮 Gaming Simulation Daerah Mitra IKN</div>', unsafe_allow_html=True)
-st.markdown('<p class="subtle">Simulasi penilaian calon Daerah Mitra IKN berbasis kriteria Perka OIKN Nomor 2 Tahun 2026 dan pedoman Tim Pengkaji.</p>', unsafe_allow_html=True)
-
-st.divider()
-
-# =====================
-# EXECUTIVE DASHBOARD
-# =====================
-
-st.subheader("1. Executive Dashboard")
-
-col1, col2, col3, col4 = st.columns(4)
-
-col1.metric("Skor Awal", f"{nilai_awal:.1f}")
-col2.metric("Skor Setelah Intervensi", f"{nilai_akhir:.1f}", f"+{bonus}")
-col3.metric("Dokumen Lengkap", f"{len(dokumen_terpenuhi)}/{len(DOKUMEN)}")
-col4.metric("Status Akhir", status_akhir)
-
-col5, col6, col7, col8 = st.columns(4)
-
-col5.metric("Estimasi Investasi", f"Rp {data['investasi']} T")
-col6.metric("Tenaga Kerja", f"{data['tenaga_kerja']:,} orang")
-col7.metric("Luas Kawasan", f"{data['luas']:,} ha")
-col8.metric("Jumlah Klaster", len(data["klaster"]))
-
-st.divider()
-
-# =====================
-# PROFIL KAWASAN
-# =====================
-
-st.subheader("2. Profil Calon Daerah Mitra")
-
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.write(f"**Nama Kawasan:** {pilihan_kawasan}")
-    st.write(f"**Lokasi:** {data['lokasi']}")
-    st.write(f"**Status Lokasi:** {data['status']}")
-    st.write(f"**Pemrakarsa:** {pemrakarsa}")
-    st.write(f"**Klaster SEN yang Didukung:** {', '.join(data['klaster'])}")
-
-with col2:
-    if status_akhir == "Layak untuk Ditetapkan":
-        st.success(status_akhir)
-    elif status_akhir == "Layak dengan Perbaikan":
-        st.warning(status_akhir)
-    else:
-        st.error(status_akhir)
-
-    st.write(catatan_akhir)
-
-st.divider()
-
-# =====================
-# DOKUMEN
-# =====================
-
-st.subheader("3. Verifikasi Kelengkapan Dokumen")
-
-dok_df = pd.DataFrame({
-    "Dokumen": DOKUMEN,
-    "Status": ["Ada" if d in dokumen_terpenuhi else "Belum Ada" for d in DOKUMEN]
-})
-
-st.dataframe(dok_df, width="stretch")
-
-fig_doc = go.Figure(
-    data=[
-        go.Pie(
-            labels=["Terpenuhi", "Belum Terpenuhi"],
-            values=[len(dokumen_terpenuhi), len(DOKUMEN) - len(dokumen_terpenuhi)],
-            hole=0.55
-        )
-    ]
-)
-
-fig_doc.update_layout(
-    title="Kelengkapan Dokumen",
-    height=350
-)
-
-st.plotly_chart(fig_doc, width="stretch")
-
-st.divider()
-
-# =====================
-# SKOR TIM PENGKAJI
-# =====================
-
-st.subheader("4. Penilaian Tim Pengkaji")
-
-penilaian_df = pd.DataFrame({
-    "Indikator": list(BOBOT.keys()),
-    "Bobot (%)": list(BOBOT.values()),
-    "Skor": [skor[i] for i in BOBOT],
-    "Nilai Tertimbang": [skor[i] * BOBOT[i] / 100 for i in BOBOT]
-})
-
-st.dataframe(penilaian_df, width="stretch")
-
-fig_bar = go.Figure()
-fig_bar.add_trace(go.Bar(
-    x=penilaian_df["Indikator"],
-    y=penilaian_df["Nilai Tertimbang"],
-    text=penilaian_df["Nilai Tertimbang"].round(1),
-    textposition="auto"
-))
-
-fig_bar.update_layout(
-    title="Nilai Tertimbang per Indikator",
-    xaxis_title="Indikator",
-    yaxis_title="Nilai Tertimbang",
-    height=450
-)
-
-st.plotly_chart(fig_bar, width="stretch")
-
-# Radar chart
-fig_radar = go.Figure()
-
-fig_radar.add_trace(go.Scatterpolar(
-    r=[skor[i] for i in BOBOT],
-    theta=list(BOBOT.keys()),
-    fill="toself",
-    name="Skor Kawasan"
-))
-
-fig_radar.update_layout(
-    polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-    title="Radar Chart Kesiapan Kawasan",
-    height=500
-)
-
-st.plotly_chart(fig_radar, width="stretch")
-
-st.divider()
-
-# =====================
-# SIMULASI INTERVENSI
-# =====================
-
-st.subheader("5. Simulasi Intervensi Kebijakan")
-
-if intervensi_dipilih:
-    intervensi_df = pd.DataFrame({
-        "Intervensi": intervensi_dipilih,
-        "Tambahan Skor": [INTERVENSI[i] for i in intervensi_dipilih]
-    })
-
-    st.dataframe(intervensi_df, width="stretch")
-else:
-    st.info("Belum ada intervensi dipilih.")
+st.header("1. Profil Usulan")
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Skor Awal", f"{nilai_awal:.1f}")
-col2.metric("Bonus Intervensi", f"+{bonus}")
-col3.metric("Skor Akhir", f"{nilai_akhir:.1f}")
+col1.metric("Calon Daerah Mitra", nama_kawasan)
+col2.metric("Pemrakarsa", pemrakarsa)
+col3.metric("Luas Kawasan", f"{luas:,.0f} ha")
+
+st.write(f"**Lokasi:** {lokasi}")
+st.write(f"**Status lokasi:** {jenis_lokasi}")
 
 st.divider()
 
-# =====================
-# REKOMENDASI OTOMATIS
-# =====================
+st.header("2. Verifikasi Awal")
 
-st.subheader("6. Rekomendasi Otomatis")
+col1, col2 = st.columns(2)
 
-rekomendasi_text = f"""
-Berdasarkan hasil simulasi pengkajian calon Daerah Mitra IKN terhadap **{pilihan_kawasan}**, diperoleh skor awal sebesar **{nilai_awal:.1f}** dan skor setelah intervensi sebesar **{nilai_akhir:.1f}**. 
+with col1:
+    if dokumen_lengkap:
+        st.success("Dokumen persyaratan lengkap. Usulan dapat dilanjutkan ke tahap pengkajian.")
+    else:
+        st.error("Dokumen belum lengkap. Usulan dikembalikan kepada pemrakarsa untuk dilengkapi.")
 
-Kelengkapan dokumen mencapai **{kelengkapan_dokumen:.0f}%**, dengan status akhir **{status_akhir}**.
+with col2:
+    if kriteria_dasar_lengkap:
+        st.success("Kriteria dasar lokasi terpenuhi.")
+    else:
+        st.warning("Masih terdapat kriteria dasar lokasi yang belum terpenuhi.")
 
-Dengan mempertimbangkan profil kawasan, dukungan terhadap klaster Superhub Ekonomi Nusantara, kesiapan dokumen, potensi investasi, serta hasil penilaian Tim Pengkaji, maka calon Daerah Mitra ini direkomendasikan sebagai berikut:
+dok_df = pd.DataFrame({
+    "Dokumen Wajib": DOKUMEN_WAJIB,
+    "Status": ["Ada" if d in dokumen_ada else "Tidak Ada" for d in DOKUMEN_WAJIB]
+})
 
-**{status_akhir}**
+st.dataframe(dok_df, use_container_width=True)
 
-Catatan:
-{catatan_akhir}
-"""
+st.divider()
 
-st.info(rekomendasi_text)
+st.header("3. Penilaian oleh Tim Pengkaji")
 
-# =====================
-# GENERATOR NOTA DINAS
-# =====================
+skor_input = {}
 
-st.subheader("7. Draft Ringkasan Nota Dinas")
+with st.expander("Isi skor sub indikator", expanded=True):
+    for indikator, bobot in SUB_INDIKATOR.items():
+        skor_input[indikator] = st.slider(
+            f"{indikator} | Bobot {bobot}%",
+            min_value=0,
+            max_value=100,
+            value=70
+        )
 
-nota_dinas = f"""
-NOTA DINAS
+hasil_penilaian = []
 
-Hal: Penyampaian Hasil Simulasi Pengkajian Calon Daerah Mitra IKN
+for indikator, bobot in SUB_INDIKATOR.items():
+    nilai_tertimbang = skor_input[indikator] * bobot / 100
+    hasil_penilaian.append({
+        "Sub Indikator": indikator,
+        "Bobot (%)": bobot,
+        "Skor Input": skor_input[indikator],
+        "Nilai Tertimbang": nilai_tertimbang
+    })
 
-Yth. Kepala Otorita Ibu Kota Nusantara
+df = pd.DataFrame(hasil_penilaian)
+total_skor = df["Nilai Tertimbang"].sum()
 
-Dalam rangka mendukung pembangunan dan pengembangan Superhub Ekonomi Nusantara, telah dilakukan simulasi pengkajian terhadap calon Daerah Mitra IKN sebagai berikut:
+st.dataframe(df, use_container_width=True)
 
-1. Nama kawasan: {pilihan_kawasan}
-2. Lokasi: {data['lokasi']}
-3. Pemrakarsa: {pemrakarsa}
-4. Luas kawasan: {data['luas']:,} hektare
-5. Klaster yang didukung: {', '.join(data['klaster'])}
-6. Estimasi investasi: Rp {data['investasi']} triliun
-7. Estimasi penyerapan tenaga kerja: {data['tenaga_kerja']:,} orang
-8. Skor awal pengkajian: {nilai_awal:.1f}
-9. Skor setelah intervensi: {nilai_akhir:.1f}
-10. Status rekomendasi: {status_akhir}
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Skor Pengkajian", f"{total_skor:.2f}")
+col2.metric("Dokumen", "Lengkap" if dokumen_lengkap else "Belum Lengkap")
+col3.metric("Kriteria Dasar", "Terpenuhi" if kriteria_dasar_lengkap else "Belum Terpenuhi")
 
-Berdasarkan hasil simulasi tersebut, {pilihan_kawasan} dinilai {status_akhir.lower()} sebagai calon Daerah Mitra IKN.
+st.bar_chart(df.set_index("Sub Indikator")["Nilai Tertimbang"])
 
-Demikian disampaikan, sebagai bahan pertimbangan lebih lanjut.
-"""
+st.divider()
 
-st.text_area("Draft Nota Dinas", nota_dinas, height=420)
+st.header("4. Tahapan Gaming Simulation")
 
-# =====================
-# DOWNLOAD
-# =====================
+tahap = st.radio(
+    "Pilih tahapan simulasi",
+    [
+        "Penilaian Dokumen",
+        "Presentasi dan Wawancara",
+        "Kunjungan Lapangan",
+        "Perumusan Rekomendasi"
+    ],
+    horizontal=True
+)
 
-st.subheader("8. Download Hasil")
+if tahap == "Penilaian Dokumen":
+    st.info("Fokus: mengecek kesesuaian dokumen dengan kriteria Daerah Mitra dan pembobotan penilaian.")
+elif tahap == "Presentasi dan Wawancara":
+    st.info("Fokus: pendalaman substansi, klarifikasi dokumen, kesiapan kelembagaan, pendanaan, dan komitmen.")
+elif tahap == "Kunjungan Lapangan":
+    st.info("Fokus: verifikasi faktual kondisi lahan, batas kawasan, infrastruktur, kelembagaan, dan sumber daya manusia.")
+else:
+    st.info("Fokus: menyusun rekomendasi akhir kepada Kepala OIKN.")
+
+st.divider()
+
+st.header("5. Rekomendasi Simulasi")
+
+if not dokumen_lengkap:
+    status_rekomendasi = "Belum Layak"
+    rekomendasi = "Dokumen persyaratan belum lengkap. Usulan perlu dikembalikan kepada pemrakarsa untuk dilengkapi."
+elif not kriteria_dasar_lengkap:
+    status_rekomendasi = "Layak dengan Perbaikan"
+    rekomendasi = "Kriteria dasar lokasi belum sepenuhnya terpenuhi. Perlu pemenuhan aspek tata ruang, batas kawasan, status lahan, potensi ekonomi, atau dukungan klaster."
+elif total_skor >= 80:
+    status_rekomendasi = "Layak untuk Ditetapkan"
+    rekomendasi = "Calon Daerah Mitra dinilai layak untuk direkomendasikan kepada Kepala OIKN."
+elif total_skor >= 65:
+    status_rekomendasi = "Layak dengan Perbaikan"
+    rekomendasi = "Calon Daerah Mitra dapat dilanjutkan dengan pemenuhan persyaratan atau perbaikan tertentu."
+else:
+    status_rekomendasi = "Belum Layak"
+    rekomendasi = "Calon Daerah Mitra belum layak untuk ditetapkan dan memerlukan penguatan substansial."
+
+if status_rekomendasi == "Layak untuk Ditetapkan":
+    st.success(status_rekomendasi)
+elif status_rekomendasi == "Layak dengan Perbaikan":
+    st.warning(status_rekomendasi)
+else:
+    st.error(status_rekomendasi)
+
+st.write(rekomendasi)
+
+isu_prioritas = df[df["Skor Input"] < 60].sort_values("Skor Input")
+
+if not isu_prioritas.empty:
+    st.subheader("Isu Prioritas Perbaikan")
+    st.dataframe(isu_prioritas, use_container_width=True)
+
+st.divider()
+
+st.header("6. Output Simulasi")
 
 output = {
-    "Tanggal": date.today(),
-    "Kawasan": pilihan_kawasan,
-    "Lokasi": data["lokasi"],
+    "Tanggal Simulasi": date.today(),
+    "Nama Kawasan": nama_kawasan,
+    "Lokasi": lokasi,
     "Pemrakarsa": pemrakarsa,
-    "Luas Hektare": data["luas"],
-    "Status Lokasi": data["status"],
-    "Klaster": ", ".join(data["klaster"]),
-    "Investasi Triliun Rupiah": data["investasi"],
-    "Tenaga Kerja": data["tenaga_kerja"],
-    "Dokumen Terpenuhi": len(dokumen_terpenuhi),
-    "Total Dokumen": len(DOKUMEN),
-    "Kelengkapan Dokumen Persen": kelengkapan_dokumen,
-    "Skor Awal": nilai_awal,
-    "Bonus Intervensi": bonus,
-    "Skor Akhir": nilai_akhir,
-    "Status Rekomendasi": status_akhir,
-    "Catatan": catatan_akhir
+    "Luas": luas,
+    "Status Lokasi": jenis_lokasi,
+    "Dokumen Lengkap": dokumen_lengkap,
+    "Kriteria Dasar Terpenuhi": kriteria_dasar_lengkap,
+    "Total Skor": total_skor,
+    "Status Rekomendasi": status_rekomendasi,
+    "Rekomendasi": rekomendasi,
+    "Klaster Ekonomi": ", ".join(klaster_ekonomi),
+    "Klaster Pemampu": ", ".join(klaster_pemampu)
 }
 
 output_df = pd.DataFrame([output])
 
+st.dataframe(output_df, use_container_width=True)
+
 csv = output_df.to_csv(index=False).encode("utf-8")
 
 st.download_button(
-    label="Download Hasil Simulasi CSV",
+    label="Download Hasil Simulasi",
     data=csv,
     file_name="hasil_simulasi_daerah_mitra_ikn.csv",
     mime="text/csv"
-)
-
-st.download_button(
-    label="Download Draft Nota Dinas TXT",
-    data=nota_dinas.encode("utf-8"),
-    file_name="draft_nota_dinas_daerah_mitra_ikn.txt",
-    mime="text/plain"
 )
