@@ -1,11 +1,6 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-import plotly.graph_objects as go
-import folium
-from streamlit_folium import st_folium
-from docx import Document
-from io import BytesIO
 
 st.set_page_config(
     page_title="Simulasi Pengkajian Daerah Mitra IKN",
@@ -319,91 +314,4 @@ st.download_button(
     data=csv,
     file_name="hasil_simulasi_daerah_mitra_ikn.csv",
     mime="text/csv"
-)
-
-st.markdown("## 📈 Radar Assessment")
-
-kategori = [
-    "Legalitas",
-    "RTRW",
-    "Lahan",
-    "Investasi",
-    "Klaster",
-    "Konektivitas"
-]
-
-nilai = [100, 90, 85, 80, 95, 75]
-
-fig = go.Figure()
-
-fig.add_trace(go.Scatterpolar(
-    r=nilai,
-    theta=kategori,
-    fill="toself",
-    name="Kesiapan Kawasan"
-))
-
-fig.update_layout(
-    polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-    showlegend=False,
-    height=500
-)
-
-st.plotly_chart(fig, width="stretch")
-
-st.markdown("## 💰 Simulasi Investasi")
-
-investasi = st.number_input(
-    "Nilai Investasi Potensial (Rp Triliun)",
-    min_value=0.0,
-    value=28.5
-)
-
-tenaga_kerja = st.number_input(
-    "Estimasi Tenaga Kerja",
-    min_value=0,
-    value=12000
-)
-
-pdrb = investasi * 2.3
-
-col1, col2, col3 = st.columns(3)
-
-col1.metric("Investasi", f"Rp {investasi:.1f} T")
-col2.metric("Dampak PDRB", f"Rp {pdrb:.1f} T")
-col3.metric("Tenaga Kerja", f"{tenaga_kerja:,} orang")
-
-st.markdown("## 🗺️ Peta Interaktif Kawasan")
-
-m = folium.Map(
-    location=[-1.215, 116.82],
-    zoom_start=11
-)
-
-folium.Marker(
-    [-1.215, 116.82],
-    popup="KPI/KI Kariangau",
-    tooltip="KPI/KI Kariangau"
-).add_to(m)
-
-st_folium(m, width=1000, height=500)
-
-st.markdown("## 📄 Download Nota Dinas")
-
-doc = Document()
-doc.add_heading("Nota Dinas Pengkajian Calon Daerah Mitra IKN", level=1)
-doc.add_paragraph(f"Calon Daerah Mitra: {nama_kawasan}")
-doc.add_paragraph(f"Lokasi: {lokasi}")
-doc.add_paragraph(f"Pemrakarsa: {pemrakarsa}")
-doc.add_paragraph("Berdasarkan hasil simulasi, kawasan ini dapat dipertimbangkan lebih lanjut sebagai Calon Daerah Mitra IKN.")
-
-buffer = BytesIO()
-doc.save(buffer)
-buffer.seek(0)
-
-st.download_button(
-    label="Download Nota Dinas Word",
-    data=buffer,
-    file_name="Nota_Dinas_Daerah_Mitra_IKN.docx",
-    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
